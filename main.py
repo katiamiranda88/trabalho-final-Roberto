@@ -104,4 +104,8 @@ Material Didático",
     bg="#1a1a2e", fg="#444466",
     font=("Arial", 8)).pack()
 
+#INICIALIZAÇÃO DO SISTEMA
+
+root.mainloop()
+
 
