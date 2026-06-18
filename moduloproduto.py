@@ -110,7 +110,7 @@ class AppProdutos:
             cursor.execute("""
                 SELECT p.id_produto, p.nome_produto, p.preco, p.estoque, f.nome_fornecedor 
                 FROM produtos p 
-                LEFT JOIN fornecedores f ON p.id_fornecedor = f.id_fornecedor 
+                LEFT JOIN fornecedor f ON p.id_fornecedor = f.id_fornecedor 
                 ORDER BY p.nome_produto
             """)
             for row in cursor.fetchall():

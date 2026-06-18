@@ -8,14 +8,18 @@ from datetime import datetime
 
 
 # ==================== FUNÇÕES DE NAVEGAÇÃO ====================
-def voltar(janela, abrir_menu_func):
-    resposta = messagebox.askokcancel(
-        'Voltar ao Menu',
-        'Deseja voltar ao menu principal?\nDados não salvos serão perdidos.'
-    )
-    if resposta:
+def voltar(janela, voltar_callback=None):
+    """Volta ao menu principal de forma segura"""
+    if messagebox.askokcancel('Voltar ao Menu', 
+                             'Deseja voltar ao menu principal?\nDados não salvos serão perdidos.'):
         janela.destroy()
-        abrir_menu_func()
+        if voltar_callback:
+            try:
+                voltar_callback()
+            except Exception as e:
+                messagebox.showerror("Erro", f"Não foi possível voltar ao menu.\n\n{e}")
+        else:
+            messagebox.showerror("Erro", "Não foi possível voltar ao menu (callback não fornecido).")
 
 
 def criar_barra_navegacao(janela, titulo_tela, abrir_menu_func):

@@ -4,7 +4,11 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import mysql.connector
-import re
+import os
+import sys
+
+# Adiciona o diretório atual ao path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
 def conectar_db():
@@ -23,13 +27,31 @@ def conectar_db():
 
 
 def voltar(janela):
+    """Função robusta para voltar ao menu principal"""
     if messagebox.askokcancel('Voltar ao Menu', 'Deseja voltar ao menu principal?\nDados não salvos serão perdidos.'):
         janela.destroy()
         try:
             import modulomenu
-            modulomenu.abrir_menu()
-        except Exception:
-            messagebox.showerror("Erro", "Não foi possível abrir o menu principal.")
+            
+            # Tenta encontrar a classe correta
+            if hasattr(modulomenu, 'AppMenuPrincipal'):
+                root = tk.Tk()
+                app = modulomenu.AppMenuPrincipal(root)
+                root.mainloop()
+            elif hasattr(modulomenu, 'AppMenu'):
+                root = tk.Tk()
+                app = modulomenu.AppMenu(root)
+                root.mainloop()
+            else:
+                # Executa o arquivo diretamente como fallback
+                import subprocess
+                caminho = os.path.join(os.path.dirname(os.path.abspath(__file__)), "modulomenu.py")
+                subprocess.Popen(["python", caminho])
+                
+        except ImportError:
+            messagebox.showerror("Erro", "Não foi possível encontrar o arquivo 'modulomenu.py'.")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Não foi possível voltar ao menu:\n{e}")
 
 
 class AppFornecedores:
@@ -46,9 +68,8 @@ class AppFornecedores:
         self.criar_interface()
         self.carregar_fornecedores()
 
-
     def criar_interface(self):
-        # ==================== HEADER ====================
+        # Header
         header = tk.Frame(self.root, bg="#1a1a2e", height=85)
         header.pack(fill="x")
         header.pack_propagate(False)
@@ -67,11 +88,10 @@ class AppFornecedores:
         ttk.Entry(busca_frame, textvariable=self.var_busca, width=45).pack(side="left", padx=10)
         self.var_busca.trace("w", lambda *args: self.carregar_fornecedores())
 
-        # Área Principal
         main_frame = tk.Frame(self.root, bg="#0f0f1a", padx=35, pady=20)
         main_frame.pack(fill="both", expand=True)
 
-        # Formulário Esquerdo
+        # Formulário
         form_frame = tk.LabelFrame(main_frame, text=" Dados do Fornecedor ", 
                                  bg="#16213e", fg="#ffffff", font=("Segoe UI", 12, "bold"), padx=25, pady=25)
         form_frame.pack(side="left", fill="y", padx=(0, 30))
@@ -87,8 +107,8 @@ class AppFornecedores:
 
         self.entries = {}
         for i, (label_text, var_name) in enumerate(campos):
-            tk.Label(form_frame, text=label_text, bg="#16213e", fg="#cccccc", font=("Segoe UI", 11)).grid(
-                row=i, column=0, sticky="w", pady=10)
+            tk.Label(form_frame, text=label_text, bg="#16213e", fg="#cccccc", 
+                    font=("Segoe UI", 11)).grid(row=i, column=0, sticky="w", pady=10)
             
             if var_name:
                 entry = ttk.Entry(form_frame, width=42, font=("Segoe UI", 11))
@@ -99,7 +119,6 @@ class AppFornecedores:
                                      font=("Arial", 12, "bold"))
                 self.lbl_id.grid(row=i, column=1, sticky="w", padx=20, pady=10)
 
-        # Botões
         btn_frame = tk.Frame(form_frame, bg="#16213e")
         btn_frame.grid(row=len(campos), column=0, columnspan=2, pady=30)
 
@@ -108,7 +127,7 @@ class AppFornecedores:
         ttk.Button(btn_frame, text="🗑 EXCLUIR", command=self.excluir).pack(side="left", padx=5)
         ttk.Button(btn_frame, text="🧹 LIMPAR", command=self.limpar).pack(side="left", padx=5)
 
-        # Lista de Fornecedores
+        # Lista
         list_frame = tk.LabelFrame(main_frame, text=" Fornecedores Cadastrados ", 
                                  bg="#16213e", fg="#ffffff", font=("Segoe UI", 12, "bold"), padx=20, pady=20)
         list_frame.pack(side="right", fill="both", expand=True)
@@ -116,7 +135,7 @@ class AppFornecedores:
         cols = ("ID", "Empresa", "CNPJ", "Contato", "Telefone", "E-mail")
         self.tree = ttk.Treeview(list_frame, columns=cols, show="headings")
         
-        widths = {"ID": 70, "Empresa": 280, "CNPJ": 140, "Contato": 160, "Telefone": 130, "E-mail": 220}
+        widths = {"ID": 70, "Empresa": 280, "CNPJ": 150, "Contato": 160, "Telefone": 130, "E-mail": 240}
         for col in cols:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=widths.get(col, 140), anchor="w")
@@ -127,7 +146,6 @@ class AppFornecedores:
         scrollbar.pack(side="right", fill="y")
 
         self.tree.bind("<<TreeviewSelect>>", self.selecionar)
-
 
     def carregar_fornecedores(self, *args):
         for item in self.tree.get_children():
@@ -142,14 +160,14 @@ class AppFornecedores:
             if busca:
                 cursor.execute("""
                     SELECT id_fornecedor, nome_fornecedor, CNPJ, contato, telefone, email 
-                    FROM fornecedores 
-                    WHERE nome_fornecedor LIKE %s OR CNPJ LIKE %s 
+                    FROM fornecedor 
+                    WHERE nome_fornecedor LIKE %s OR CNPJ LIKE %s OR email LIKE %s
                     ORDER BY nome_fornecedor
-                """, (f"%{busca}%", f"%{busca}%"))
+                """, (f"%{busca}%", f"%{busca}%", f"%{busca}%"))
             else:
                 cursor.execute("""
                     SELECT id_fornecedor, nome_fornecedor, CNPJ, contato, telefone, email 
-                    FROM fornecedores ORDER BY nome_fornecedor
+                    FROM fornecedor ORDER BY nome_fornecedor
                 """)
             
             for row in cursor.fetchall():
@@ -159,7 +177,6 @@ class AppFornecedores:
         finally:
             conn.close()
 
-
     def selecionar(self, event):
         sel = self.tree.selection()
         if not sel: return
@@ -168,20 +185,13 @@ class AppFornecedores:
         self.fornecedor_id_selecionado = valores[0]
         self.lbl_id.config(text=valores[0])
 
-        self.entries["entry_nome"].delete(0, tk.END)
-        self.entries["entry_nome"].insert(0, valores[1])
-        self.entries["entry_cnpj"].delete(0, tk.END)
-        self.entries["entry_cnpj"].insert(0, valores[2] or "")
-        self.entries["entry_contato"].delete(0, tk.END)
-        self.entries["entry_contato"].insert(0, valores[3] or "")
-        self.entries["entry_telefone"].delete(0, tk.END)
-        self.entries["entry_telefone"].insert(0, valores[4] or "")
-        self.entries["entry_email"].delete(0, tk.END)
-        self.entries["entry_email"].insert(0, valores[5] or "")
-
+        for entry, value in zip(self.entries.values(), valores[1:]):
+            entry.delete(0, tk.END)
+            entry.insert(0, value or "")
 
     def salvar(self):
-        if not self.entries["entry_nome"].get().strip():
+        nome = self.entries["entry_nome"].get().strip()
+        if not nome:
             messagebox.showwarning("Aviso", "Nome da Empresa é obrigatório!")
             return
 
@@ -190,10 +200,10 @@ class AppFornecedores:
         try:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO fornecedores (nome_fornecedor, CNPJ, contato, telefone, email)
+                INSERT INTO fornecedor (nome_fornecedor, CNPJ, contato, telefone, email)
                 VALUES (%s, %s, %s, %s, %s)
             """, (
-                self.entries["entry_nome"].get().strip(),
+                nome,
                 self.entries["entry_cnpj"].get().strip() or None,
                 self.entries["entry_contato"].get().strip() or None,
                 self.entries["entry_telefone"].get().strip() or None,
@@ -208,7 +218,6 @@ class AppFornecedores:
         finally:
             conn.close()
 
-
     def alterar(self):
         if not self.fornecedor_id_selecionado:
             messagebox.showwarning("Aviso", "Selecione um fornecedor para alterar.")
@@ -219,7 +228,7 @@ class AppFornecedores:
         try:
             cursor = conn.cursor()
             cursor.execute("""
-                UPDATE fornecedores 
+                UPDATE fornecedor 
                 SET nome_fornecedor=%s, CNPJ=%s, contato=%s, telefone=%s, email=%s
                 WHERE id_fornecedor = %s
             """, (
@@ -238,7 +247,6 @@ class AppFornecedores:
         finally:
             conn.close()
 
-
     def excluir(self):
         if not self.fornecedor_id_selecionado or not messagebox.askyesno("Confirmação", "Excluir este fornecedor?"):
             return
@@ -246,7 +254,7 @@ class AppFornecedores:
         if not conn: return
         try:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM fornecedores WHERE id_fornecedor = %s", (self.fornecedor_id_selecionado,))
+            cursor.execute("DELETE FROM fornecedor WHERE id_fornecedor = %s", (self.fornecedor_id_selecionado,))
             conn.commit()
             messagebox.showinfo("Sucesso", "Fornecedor excluído com sucesso!")
             self.limpar()
@@ -255,7 +263,6 @@ class AppFornecedores:
             messagebox.showerror("Erro", f"Erro ao excluir:\n{str(e)}")
         finally:
             conn.close()
-
 
     def limpar(self):
         for entry in self.entries.values():
